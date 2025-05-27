@@ -6,7 +6,7 @@ import torchvision
 
 
 class SimpleObjectDetector(nn.Module):
-    def __init__(self, num_classes=20, grid_size=7):
+    def __init__(self, num_classes=20, grid_size=13):
         super().__init__()
         self.backbone = ResNet18(num_classes=1000)  # fully-connected는 사용 안 함
         self.grid_size = grid_size
@@ -17,7 +17,7 @@ class SimpleObjectDetector(nn.Module):
             nn.Conv2d(512, 256, kernel_size=3, stride=1, padding=1),
             nn.ReLU(inplace=True),
             nn.Conv2d(256, 128, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(inplace=True)
+            nn.ReLU(inplace=True),
         )
 
         # Detection Head
@@ -29,15 +29,17 @@ class SimpleObjectDetector(nn.Module):
 
         # Feature -> Head
         x = self.feature_extractor(x)  # [B, 128, 7, 7]
-        x = self.pred_head(x)          # [B, 4+C, 7, 7]
+        x = self.pred_head(x)  # [B, 4+C, 7, 7]
 
         # [B, (4+C), 7, 7] -> [B, 7, 7, 4+C]
         x = x.permute(0, 2, 3, 1).contiguous()
 
         return x
-    
 
-def decode_predictions(output, conf_thresh=0.5, iou_thresh=0.5, num_classes=20, image_size=224):
+
+def decode_predictions(
+    output, conf_thresh=0.5, iou_thresh=0.5, num_classes=20, image_size=224
+):
     """
     output: Tensor of shape [1, 7, 7, 24] = [B, S, S, 4 + num_classes]
     returns: boxes [N, 4], scores [N], labels [N]
@@ -55,9 +57,9 @@ def decode_predictions(output, conf_thresh=0.5, iou_thresh=0.5, num_classes=20, 
             class_logits = cell[4:]
             class_probs = F.softmax(class_logits, dim=0)
 
-            conf, cls = torch.max(class_probs, dim=0)
+            conf, cls = torch.max(class_probs, dim=-1)
 
-            if conf > conf_thresh:
+            if conf > conf_thresh and w > 0.01 and h > 0.01:
                 # grid cell (i,j) 기준 위치 → 이미지 상대 좌표로 변환
                 cx = (j + cx.item()) / S
                 cy = (i + cy.item()) / S
@@ -91,7 +93,7 @@ def decode_predictions(output, conf_thresh=0.5, iou_thresh=0.5, num_classes=20, 
     keep = torchvision.ops.nms(boxes, scores, iou_thresh)
 
     return boxes[keep], scores[keep], labels[keep]
-    
+
 
 if __name__ == "__main__":
     model = SimpleObjectDetector(num_classes=20).eval()

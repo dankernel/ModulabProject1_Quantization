@@ -8,16 +8,21 @@ def detection_loss(pred, target, num_classes=20):
     """
     B, S, _, _ = pred.shape
 
-    bbox_pred = pred[..., :4].contiguous().reshape(-1, 4)
-    bbox_true = target[..., :4].contiguous().reshape(-1, 4)
+    # 객체가 있는 셀 mask
+    obj_mask = target[..., 4:].sum(-1) > 0  # [B, S, S]
 
-    cls_pred = pred[..., 4:].contiguous().reshape(-1, num_classes)
-    cls_true = target[..., 4:].contiguous().reshape(-1, num_classes)
-    
-    # bbox regression loss
-    loss_bbox = F.smooth_l1_loss(bbox_pred, bbox_true)
+    # bbox regression loss: 객체가 있는 셀만 계산
+    bbox_pred = pred[..., :4][obj_mask]
+    bbox_true = target[..., :4][obj_mask]
+    if bbox_pred.numel() == 0:
+        loss_bbox = 0.0
+    else:
+        loss_bbox = F.smooth_l1_loss(bbox_pred, bbox_true)
 
-    # classification loss
+    # classification loss: 전체 셀
+    cls_pred = pred[..., 4:]
+    cls_true = target[..., 4:]
+    # 이진 분류(one-hot), 다수 클래스 있음
     loss_cls = F.binary_cross_entropy_with_logits(cls_pred, cls_true)
 
     return loss_bbox + loss_cls

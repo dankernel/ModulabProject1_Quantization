@@ -8,17 +8,20 @@ import torchvision.transforms as transforms
 from tqdm import tqdm
 
 
-def train(device="mps"):
-    transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor()
-    ])
-
+def train(device="cuda"):
+    transform = transforms.Compose(
+        [
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ]
+    )
     dataset = VOCDataset("VOCdevkit/VOC2007", transform=transform)
-    loader = DataLoader(dataset, batch_size=8, shuffle=True)
+
+    loader = DataLoader(dataset, batch_size=128, shuffle=True)
 
     model = SimpleObjectDetector(num_classes=len(VOC_CLASSES)).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=3e-4)
 
     model.train()
     for epoch in range(20):
@@ -37,7 +40,9 @@ def train(device="mps"):
 
         print(f"Epoch {epoch+1}: Loss = {total_loss:.4f}")
 
-    
+        if epoch % 5 == 0:
+            torch.save(model.state_dict(), f"model_epoch_{epoch}.pth")
+
     torch.save(model.state_dict(), "model.pth")
 
 

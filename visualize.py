@@ -8,7 +8,9 @@ from detector import decode_predictions  # 예측 decode 함수
 import random
 
 
-def show_detections(img_tensor, boxes, scores, labels, class_names, score_threshold=0.1):
+def show_detections(
+    img_tensor, boxes, scores, labels, class_names, score_threshold=0.1
+):
     img = img_tensor.permute(1, 2, 0).cpu().numpy()  # [C, H, W] → [H, W, C]
 
     fig, ax = plt.subplots(1)
@@ -21,23 +23,29 @@ def show_detections(img_tensor, boxes, scores, labels, class_names, score_thresh
         label = class_names[labels[i]]
         score = scores[i]
 
-        rect = patches.Rectangle((x1, y1), x2 - x1, y2 - y1,
-                                 linewidth=2, edgecolor='red', facecolor='none')
+        rect = patches.Rectangle(
+            (x1, y1), x2 - x1, y2 - y1, linewidth=2, edgecolor="red", facecolor="none"
+        )
         ax.add_patch(rect)
-        ax.text(x1, y1 - 5, f'{label}: {score:.2f}', color='white',
-                bbox=dict(facecolor='red', alpha=0.5, edgecolor='none'), fontsize=8)
+        ax.text(
+            x1,
+            y1 - 5,
+            f"{label}: {score:.2f}",
+            color="white",
+            bbox=dict(facecolor="red", alpha=0.5, edgecolor="none"),
+            fontsize=8,
+        )
 
-    plt.axis('off')
+    plt.axis("off")
     plt.show()
 
 
 def visualize_prediction(model_path="model.pth", device="cpu", index=None):
-    transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor()
-    ])
+    transform = transforms.Compose(
+        [transforms.Resize((224, 224)), transforms.ToTensor()]
+    )
 
-    dataset = VOCDataset("VOCdevkit/VOC2007", transform=transform, image_set='val')
+    dataset = VOCDataset("VOCdevkit/VOC2007", transform=transform, image_set="val")
 
     if index is None:
         index = random.randint(0, len(dataset) - 1)
@@ -52,7 +60,9 @@ def visualize_prediction(model_path="model.pth", device="cpu", index=None):
 
     with torch.no_grad():
         output = model(img.unsqueeze(0))  # [1, 7, 7, 24]
-        boxes, scores, labels = decode_predictions(output, conf_thresh=0.1, iou_thresh=0.5)
+        boxes, scores, labels = decode_predictions(
+            output, conf_thresh=0.5, iou_thresh=0.5
+        )
 
     print(f"Visualizing image index {index} with {len(boxes)} predicted boxes")
     show_detections(img, boxes, scores, labels, VOC_CLASSES)

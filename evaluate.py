@@ -76,22 +76,27 @@ def evaluate(model, dataloader, device="cpu", iou_thresh=0.5, conf_thresh=0.5):
 
 
 if __name__ == "__main__":
-    device = "mps"
-    transform = torchvision.transforms.Compose([
-        torchvision.transforms.Resize((224, 224)),
-        torchvision.transforms.ToTensor()
-    ])
+    device = "cuda"
+    transform = torchvision.transforms.Compose(
+        [
+            torchvision.transforms.Resize((224, 224)),
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Normalize(
+                mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+            ),
+        ]
+    )
 
-    dataset = VOCDataset("VOCdevkit/VOC2007", transform=transform, image_set='val')
+    dataset = VOCDataset("VOCdevkit/VOC2007", transform=transform, image_set="val")
 
     def collate_fn(batch):
         images, targets = zip(*batch)
         return torch.stack(images), torch.stack(targets)
 
-    dataloader = DataLoader(dataset, batch_size=1, collate_fn=collate_fn)
+    dataloader = DataLoader(dataset, batch_size=128, collate_fn=collate_fn)
 
     model = SimpleObjectDetector(num_classes=len(VOC_CLASSES))
-    model.load_state_dict(torch.load("model.pth", map_location=device))  # 저장된 모델 불러오기
+    model.load_state_dict(torch.load("model.pth", map_location=device))
     model.to(device)
 
     evaluate(model, dataloader, device=device)

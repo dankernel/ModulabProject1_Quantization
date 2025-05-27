@@ -5,22 +5,39 @@ from PIL import Image
 from torchvision import transforms
 
 VOC_CLASSES = [
-    "aeroplane", "bicycle", "bird", "boat", "bottle",
-    "bus", "car", "cat", "chair", "cow", "diningtable",
-    "dog", "horse", "motorbike", "person", "pottedplant",
-    "sheep", "sofa", "train", "tvmonitor"
+    "aeroplane",
+    "bicycle",
+    "bird",
+    "boat",
+    "bottle",
+    "bus",
+    "car",
+    "cat",
+    "chair",
+    "cow",
+    "diningtable",
+    "dog",
+    "horse",
+    "motorbike",
+    "person",
+    "pottedplant",
+    "sheep",
+    "sofa",
+    "train",
+    "tvmonitor",
 ]
 
+
 class VOCDataset(torch.utils.data.Dataset):
-    def __init__(self, root, image_set='trainval', transform=None, grid_size=7):
+    def __init__(self, root, image_set="trainval", transform=None, grid_size=7):
         self.root = root
         self.image_set = image_set
         self.transform = transform
         self.grid_size = grid_size
 
-        img_dir = os.path.join(root, 'JPEGImages')
-        ann_dir = os.path.join(root, 'Annotations')
-        split_file = os.path.join(root, 'ImageSets', 'Main', f'{image_set}.txt')
+        img_dir = os.path.join(root, "JPEGImages")
+        ann_dir = os.path.join(root, "Annotations")
+        split_file = os.path.join(root, "ImageSets", "Main", f"{image_set}.txt")
 
         with open(split_file) as f:
             self.ids = [line.strip() for line in f]
@@ -46,17 +63,17 @@ class VOCDataset(torch.utils.data.Dataset):
     def _parse_xml(self, ann_path):
         root = ET.parse(ann_path).getroot()
         boxes, labels = [], []
-        for obj in root.findall('object'):
-            label = obj.find('name').text.lower().strip()
+        for obj in root.findall("object"):
+            label = obj.find("name").text.lower().strip()
             if label not in self.class2idx:
                 continue
             cls_idx = self.class2idx[label]
 
-            bnd = obj.find('bndbox')
-            x1 = float(bnd.find('xmin').text)
-            y1 = float(bnd.find('ymin').text)
-            x2 = float(bnd.find('xmax').text)
-            y2 = float(bnd.find('ymax').text)
+            bnd = obj.find("bndbox")
+            x1 = float(bnd.find("xmin").text)
+            y1 = float(bnd.find("ymin").text)
+            x2 = float(bnd.find("xmax").text)
+            y2 = float(bnd.find("ymax").text)
             boxes.append([x1, y1, x2, y2])
             labels.append(cls_idx)
         return boxes, labels
@@ -73,11 +90,8 @@ class VOCDataset(torch.utils.data.Dataset):
             w = (x2 - x1) / image_size
             h = (y2 - y1) / image_size
 
-            i = int(cy * S)
-            j = int(cx * S)
-
-            if i >= S or j >= S:
-                continue
+            i = min(int(cy * S), S - 1)
+            j = min(int(cx * S), S - 1)
 
             target[i, j, 0:4] = torch.tensor([cx * S - j, cy * S - i, w, h])
             target[i, j, 4 + label] = 1.0  # one-hot class
